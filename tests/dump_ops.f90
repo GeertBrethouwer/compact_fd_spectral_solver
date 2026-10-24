@@ -1,14 +1,16 @@
-! writes hichan's dense D1 = A1^{-1} B1 and D1m = diag(rxi) A1u^{-1} B1u (4th order), the grid and the
-! quadrature weights to ops_<grid>_<ny>.bin (stream, little-endian): ny, y(ny), wq(ny), D1(ny,ny), D1m(ny,ny)
+! writes hichan's dense D1 = A1^{-1} B1 and D1m = diag(rxi) A1u^{-1} B1u (4th and 6th order), the grid and the
+! quadrature weights to ops_<grid>_<ny>_o<order>.bin (stream, little-endian): ny, y(ny), wq(ny), D1(ny,ny), D1m(ny,ny),
+! D2(ny,ny) = A2^{-1} B2
 program dump_ops
   use mod_types; use mod_compact
   implicit none
   integer, parameter :: nys(5)=[33,65,129,257,513]
   character(len=8), parameter :: names(4)=[character(len=8) :: 'uniform','tanh2','tanh3','tanh4']
   real(rp), parameter :: alphas(4)=[0._rp,2._rp,3._rp,4._rp]
-  integer :: ig,k,ny,j,iu
-  real(rp), allocatable :: d1(:,:),d1m(:,:),e(:)
+  integer :: ig,k,ny,j,iu,io
+  real(rp), allocatable :: d1(:,:),d1m(:,:),d2(:,:),e(:)
   character(len=64) :: fn
+  do io=4,6,2
   do ig=1,4
     do k=1,5
       ny=nys(k)
@@ -18,19 +20,21 @@ program dump_ops
       else
         call init_grid(ny,'tanh',alphas(ig),'')
       end if
-      call init_compact(ny,4)
-      allocate(d1(ny,ny),d1m(ny,ny),e(ny))
+      call init_compact(ny,io)
+      allocate(d1(ny,ny),d1m(ny,ny),d2(ny,ny),e(ny))
       do j=1,ny
         e=0; e(j)=1
         call mat_band_apply(ny,nbw,b1,e,d1(:,j)); call ts(ny,t1w,t1d,t1u,d1(:,j))
         call mat_band_apply(ny,nbw,b1m,e,d1m(:,j)); call ts(ny,t1mw,t1md,t1mu,d1m(:,j)); d1m(:,j)=d1m(:,j)*rxi
+        call mat_band_apply(ny,nbw,b2,e,d2(:,j)); call ts(ny,t2w,t2d,t2u,d2(:,j))
       end do
-      write(fn,'(a,a,a,i0,a)') 'ops_',trim(names(ig)),'_',ny,'.bin'
+      write(fn,'(a,a,a,i0,a,i0,a)') 'ops_',trim(names(ig)),'_',ny,'_o',io,'.bin'
       open(newunit=iu,file=fn,access='stream',form='unformatted',status='replace')
-      write(iu) ny,yg,wq,d1,d1m
+      write(iu) ny,yg,wq,d1,d1m,d2
       close(iu)
-      deallocate(d1,d1m,e)
+      deallocate(d1,d1m,d2,e)
     end do
+  end do
   end do
 contains
   subroutine ts(n,w,d,u,r)

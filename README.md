@@ -116,3 +116,71 @@ for the neutral cases are the Euclidean norm seen through a non-uniform energy n
 4. The inflow/outflow test is harsher than the channel (no wall-normal flux at a no-slip wall); the instability
    of `D1m`/`CSBP` there comes from strongly imposed boundary values with a non-diagonal norm and would need
    SAT (penalty) boundary conditions in an inflow/outflow problem.
+
+## Higher-order SBP and mimetic operators
+
+### Diagonal-norm SBP 3-6 and 4-8 (`make sbp`)
+
+`tests/sbp_diag.py` derives diagonal-norm SBP first-derivative operators (Strand 1994; Mattsson & Nordström 2004)
+of interior order 2s and boundary order s: the accuracy conditions are linear in the norm weights and the
+boundary block of Q, so each closure is one linear solve; the free parameters (0, 0 and 3) are chosen to minimise
+the boundary truncation error and the spectral radius. The norms reproduce Strand's exactly (2-4: 17/48, 59/48,
+43/48, 49/48; 3-6: 13649/43200, 12013/8640, …; 4-8: 1498139/5080320, 1107307/725760, …). Mapped like `D1m`
+with H_y = H diag(y_ξ), they are exactly SBP on any monotone grid. Both are now part of `compare_sbp.py`, together
+with hichan's 6th-order `D1-6` and `D1m-6`.
+
+Max error of f′ at Ny = 513 (wall-dominated) / interior error at Ny = 257, and skew-symmetric advection stability:
+
+| grid | `D1-4` | `D1-6` | `SBP36` | `SBP48` |
+|---|---|---|---|---|
+| uniform | 2.8e-7 / 1.3e-9 | 2.2e-7 / 6e-14 | 8.8e-7 / 6e-13 | **1.2e-8** / 4e-14 |
+| tanh α_s = 2 | 4.8e-8 / 3.8e-9 | 3.8e-8 / 2e-13 | 1.5e-6 / 5e-11 | 3.0e-8 / 6e-14 |
+| tanh α_s = 3 | 7.8e-9 / 9.6e-9 | 6.2e-9 / 7e-13 | 2.7e-6 / 3e-10 | 8.2e-8 / 6e-13 |
+| tanh α_s = 4 | 1.5e-9 / 2.4e-8 | 7.4e-10 / 3e-12 | 2.7e-6 / 1.4e-9 | 1.3e-7 / 5e-12 |
+| wall order | 3 | 3 | 3 | **4** |
+| SBP defect (tanh) | ≈ 1 | ≈ 1 | 2e-16 | 2e-16 |
+| skew-symmetric advection (tanh) | unstable (growth up to 1e29) | unstable (up to 1e44) | neutral | neutral |
+| spectral radius ·Δy_min (tanh) | 1.30–1.48 | 1.44–1.67 | 1.07–1.30 | 1.09–1.38 |
+
+* **SBP 4-8 is the highest-order collocated operator here that is provably stable on a stretched grid.** It is
+  4th order at the wall and 25× more accurate than hichan's compact schemes on a uniform grid; on the mildly
+  stretched α_s = 2 grid it is about as accurate as `D1-6` (3.0e-8 vs 3.8e-8). For α_s = 3 and 4 hichan's direct
+  `D1` (coefficients fitted to the actual grid) has a 10–180× smaller wall error, because the mapped SBP operators
+  feel the strong stretching near the wall through y_ξ.
+* SBP 3-6 has only a 3rd-order boundary and a large boundary error constant: it is the least accurate of the
+  four on stretched grids.
+* `D1-6` has the same problem as `D1-4` in skew-symmetric form (growth rate ≈ 0.015/Δy_min); `D1m-6` is neutral.
+
+### Corbino & Castillo mimetic operators (`make mimetic`)
+
+The Corbino–Castillo operators (MOLE, [csrc-sdsu/mole](https://github.com/csrc-sdsu/mole)) are **staggered**:
+G maps cell centres plus the two wall values to faces, D maps faces to centres, orders k = 4, 6, 8. They are not
+collocated SBP operators and would not fit hichan's collocated influence-matrix solver without a staggered
+redesign. `tests/compare_mimetic.py` tests what they are built for (accuracy of G and of the Laplacian D G, the
+extended Gauss divergence theorem Q D + Gᵀ P = B with MOLE's weights, and the spectrum of the Dirichlet
+Laplacian) against hichan's compact D2. MOLE is GPL-3.0, so its coefficient tables are read from MOLE's
+`gradNonPeriodic.m` / `divNonPeriodic.m` at run time; no MOLE code is in this repository. Full output in
+[`results_mimetic.txt`](results_mimetic.txt).
+
+| tanh α_s = 3 | mimetic k=4 | k=6 | k=8 | hichan D2-4 | hichan D2-6 |
+|---|---|---|---|---|---|
+| G error at Ny = 257 (order) | 8.3e-8 (4) | 6.6e-11 (6) | 9.7e-13 (6.7) | – | – |
+| Laplacian error at Ny = 33 / 257 | 1.9e-2 / 3.1e-5 | 2.0e-3 / 2.3e-8 | 6.5e-4 / **7.4e-10** | 1.6e-4 / 6.0e-8 | 3.9e-5 / 1.0e-7 |
+| Laplacian order | 3 | 5 | 4.6 | 3.4 | 2.7 |
+| B ≠ plain boundary term, rows from wall | 11 | 14 | 16 | – | – |
+| MOLE weights P, Q positive | yes | yes | **no** | – | – |
+| Dirichlet Laplacian: Re λ < 0 | yes | yes | yes | yes | yes |
+| max \|Im λ\| / \|λ\| | 0 | 0.04 (0.13 uniform) | 0.29 | 0 | 0 |
+| spectral radius ·Δy_min² | 5.9 | 5.1 | 5.1 | 4.2 | 4.7 |
+
+* **Accuracy at Ny = 257:** the k = 8 Laplacian is more accurate than hichan's best compact D2 on every grid
+  (5·10⁴× uniform, 3000× α_s = 2, 80× α_s = 3, 9× α_s = 4); k = 6 is better on the uniform, α_s = 2 and 3 grids
+  (10⁴×, 40×, 2.6×) but 12× worse for α_s = 4. hichan's 6th-order D2 converges at only 2.5–2.7 at the wall on
+  tanh grids. On coarse, strongly stretched grids (Ny = 33, α_s ≥ 3) hichan's D2 is 17–1000× more accurate.
+* **The "extended" Gauss theorem is not SBP in the usual sense:** the boundary operator B = Q D + Gᵀ P differs
+  from the plain boundary term (−1, +1 at the walls) in the first 11–16 rows from each wall, with deviations up
+  to 0.8, 1.5 and 4.5 for k = 4, 6, 8. Energy estimates therefore contain boundary-layer terms, and for k = 8 MOLE's weights are not all
+  positive, so they do not define a norm.
+* **Spectrum:** all Dirichlet Laplacians are stable (Re λ < 0), but for k = 6 and 8 the mimetic Laplacian is not
+  self-adjoint: eigenvalues with imaginary parts up to 30 % of the spectral radius. hichan's compact D2 has a real
+  spectrum.

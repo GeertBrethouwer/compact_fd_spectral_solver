@@ -26,11 +26,17 @@ run: all
 
 # D1, D1m vs summation-by-parts operators (needs python3 with numpy and scipy)
 PYTHON ?= python3
-sbp: $(B)/dump_ops
-	mkdir -p $(B)/ops && cd $(B)/ops && ../dump_ops
+$(B)/ops/done: $(B)/dump_ops
+	mkdir -p $(B)/ops && cd $(B)/ops && ../dump_ops && touch done
+
+sbp: $(B)/ops/done
 	$(PYTHON) tests/compare_sbp.py $(B)/ops
+
+# Corbino-Castillo mimetic operators; reads the coefficient tables from MOLE (GPL-3.0) at run time
+mimetic: $(B)/ops/done
+	$(PYTHON) tests/compare_mimetic.py $(B)/ops $(B)/mole
 
 clean:
 	rm -rf $(B)
 
-.PHONY: all run sbp clean
+.PHONY: all run sbp mimetic clean

@@ -1,24 +1,28 @@
 """
 Compare first-derivative operators on uniform and hyperbolic-tangent grids (alpha_s = 2, 3, 4):
 
-  D1     hichan's compact 4th-order scheme with coefficients computed on the stretched grid
-  D1m    hichan's compact 4th-order scheme on the uniform xi grid, D1m = diag(1/y_xi) D_xi
-  CSBP   compact 4th-order (Pade) interior with a summation-by-parts closure, norm = LHS matrix P:
-         P f' = Q f, P symmetric positive definite, Q + Q^T = diag(-1,0,...,0,1); mapped like D1m
-  SBP24  explicit diagonal-norm SBP operator (4th-order interior, 2nd-order boundary), mapped like D1m
+  D1-4, D1-6    hichan's compact 4th/6th-order scheme with coefficients computed on the stretched grid
+  D1m-4, D1m-6  hichan's compact scheme on the uniform xi grid, D1m = diag(1/y_xi) D_xi
+  CSBP          compact 4th-order (Pade) interior with a summation-by-parts closure, norm = LHS matrix P:
+                P f' = Q f, P symmetric positive definite, Q + Q^T = diag(-1,0,...,0,1); mapped like D1m
+  SBP24, SBP36, SBP48
+                explicit diagonal-norm SBP operators (interior order 4/6/8, boundary order 2/3/4, sbp_diag.py),
+                mapped like D1m
 
-Usage: python compare_sbp.py OPSDIR   (OPSDIR holds the ops_<grid>_<ny>.bin files from dump_ops.f90)
+Usage: python compare_sbp.py OPSDIR   (OPSDIR holds the ops_<grid>_<ny>_o<order>.bin files from dump_ops.f90)
 """
-import sys, numpy as np, scipy.optimize as so, scipy.linalg as sl
+import sys, os, numpy as np, scipy.optimize as so, scipy.linalg as sl
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import sbp_diag
 ops = sys.argv[1]
 GRIDS = ['uniform', 'tanh2', 'tanh3', 'tanh4']
 NYS = [33, 65, 129, 257, 513]
 
-def load(grid, ny):
-    a = np.fromfile(f'{ops}/ops_{grid}_{ny}.bin', dtype='<f8', offset=4)
+def load(grid, ny, order):
+    a = np.fromfile(f'{ops}/ops_{grid}_{ny}_o{order}.bin', dtype='<f8', offset=4)
     y, wq = a[:ny], a[ny:2*ny]
     d1 = a[2*ny:2*ny+ny*ny].reshape(ny, ny).T          # Fortran column order
-    d1m = a[2*ny+ny*ny:].reshape(ny, ny).T
+    d1m = a[2*ny+ny*ny:2*ny+2*ny*ny].reshape(ny, ny).T
     return y, wq, d1, d1m
 
 # ---------------------------------------------------------------- CSBP closure (unit spacing)
@@ -64,17 +68,10 @@ def csbp_xi(n):
     P[-R-1:, -R-1:] = (J @ P @ J)[-R-1:, -R-1:]; Q[-R-1:, -R-1:] = -(J @ Q @ J)[-R-1:, -R-1:]
     return P, Q
 
-# ---------------------------------------------------------------- explicit diagonal-norm SBP 2-4
-def sbp24_xi(n):
-    H = np.ones(n); H[:4] = H[-4:][::-1] = [17/48, 59/48, 43/48, 49/48]
-    D = np.zeros((n, n))
-    for i in range(n):
-        if 2 <= i <= n-3: D[i, i-2:i+3] = [1/12, -2/3, 0, 2/3, -1/12]
-    B = [[-24/17, 59/34, -4/17, -3/34, 0, 0], [-1/2, 0, 1/2, 0, 0, 0],
-         [4/43, -59/86, 0, 59/86, -4/43, 0], [3/98, 0, -59/98, 0, 32/49, -4/49]]
-    for i in range(4):
-        D[i, :6] = B[i]; D[n-1-i, n-6:] = -np.array(B[i])[::-1]
-    return np.diag(H), D
+# ---------------------------------------------------------------- explicit diagonal-norm SBP 2-4, 3-6, 4-8
+SBPD = {s: sbp_diag.get(s) for s in (2, 3, 4)}           # s -> (closure parameters, boundary rows)
+def sbpd_xi(n, s):
+    x, r = SBPD[s]; return sbp_diag.sbp_xi(n, s, x, r)
 
 def mapped(Dxi, h, y):
     """D_y = diag(1/y_xi) D_xi / h with y_xi from the same operator"""
@@ -113,13 +110,16 @@ f = lambda y: np.sin(2.3*y+.4); df = lambda y: 2.3*np.cos(2.3*y+.4)
 res = {}
 for grid in GRIDS:
     for ny in NYS:
-        y, wq, d1, d1m = load(grid, ny)
-        h = 2/(ny-1); xi = np.linspace(-1, 1, ny)
+        y, wq, d14, d1m4 = load(grid, ny, 4)
+        _, wq6, d16, d1m6 = load(grid, ny, 6)
+        h = 2/(ny-1)
         P, Q = csbp_xi(ny); Dc, yxc = mapped(np.linalg.solve(P, Q), h, y)
-        Hs, Ds = sbp24_xi(ny); Dsb, yxs = mapped(Ds, h, y)
-        ops_ = {'D1': d1, 'D1m': d1m, 'CSBP': Dc, 'SBP24': Dsb}
-        own = {'D1': np.diag(wq), 'D1m': np.diag(wq), 'CSBP': h*np.diag(np.sqrt(yxc)) @ P @ np.diag(np.sqrt(yxc)),
-               'SBP24': h*Hs*yxs[None, :]}
+        ops_ = {'D1-4': d14, 'D1m-4': d1m4, 'CSBP': Dc, 'D1-6': d16, 'D1m-6': d1m6}
+        own = {'D1-4': np.diag(wq), 'D1m-4': np.diag(wq), 'D1-6': np.diag(wq6), 'D1m-6': np.diag(wq6),
+               'CSBP': h*np.diag(np.sqrt(yxc)) @ P @ np.diag(np.sqrt(yxc))}
+        for s in (2, 3, 4):
+            Hs, Ds = sbpd_xi(ny, s); k = f'SBP{s}{2*s}'
+            ops_[k], yxs = mapped(Ds, h, y); own[k] = h*Hs*yxs[None, :]
         for k, D in ops_.items():
             err = abs(D @ f(y) - df(y))
             r = dict(emax=err.max(), eint=err[abs(y) < .5].max())
@@ -134,15 +134,15 @@ print('CSBP boundary block P (unit spacing, rows 1..5):\n', PB[:R+1, :R+2]); pri
 print('min eig P block:', np.linalg.eigvalsh(PB[:R+2, :R+2]).min())
 for grid in GRIDS:
     print(f'\n=== grid {grid}')
-    print(f'{"op":6s} {"max error Ny=33..513":^55s} {"order":>5s} | {"|y|<.5 err @257":>14s} {"order":>5s} |'
+    print(f'{"op":7s}{"max error Ny=33..513":^55s} {"order":>5s} | {"|y|<.5 err @257":>14s} {"order":>5s} |'
           f' {"skew own":>9s} {"best diag":>9s} {"maxRe*dy":>9s} {"rho*dy":>7s} {"G":>9s} | {"skw Re*dy":>9s} {"skw G":>9s}')
-    for k in ['D1', 'D1m', 'CSBP', 'SBP24']:
+    for k in ['D1-4', 'D1m-4', 'CSBP', 'SBP24', 'D1-6', 'D1m-6', 'SBP36', 'SBP48']:
         em = [res[grid, n, k]['emax'] for n in NYS]; ei = [res[grid, n, k]['eint'] for n in NYS]
         r = res[grid, 129, k]
-        print(f'{k:6s} ' + ' '.join(f'{e:9.2e}' for e in em) + f' {np.log2(em[-2]/em[-1]):5.2f} | {ei[3]:14.2e}'
+        print(f'{k:7s}' + ' '.join(f'{e:9.2e}' for e in em) + f' {np.log2(em[-2]/em[-1]):5.2f} | {ei[3]:14.2e}'
               f' {np.log2(ei[2]/ei[3]):5.2f} | {r["own"]:9.1e} {r["diag"]:9.1e}{"" if r["wpos"] else "*"} {r["reλ"]:9.1e} {r["ρ"]:7.3f} {r["G"]:9.2g} | {r["sk_reλ"]:9.1e} {r["sk_G"]:9.3g}')
 print('\nskew own: ||H D + D^T H - E||/||H D|| in the operator\'s own norm (D1, D1m: quadrature wq; CSBP: h Y^1/2 P Y^1/2; '
-      'SBP24: h H diag(y_xi)), Ny = 129.\nbest diag: same, minimised over all diagonal norms (* = some weight <= 0).'
+      'SBPxy: h H diag(y_xi)), Ny = 129.\nbest diag: same, minimised over all diagonal norms (* = some weight <= 0).'
       '\nmaxRe*dy, rho*dy: max real part and spectral radius of the advection operator with inflow BC, times dy_min (Ny = 129).'
       '\nG: max_t ||exp(t L)|| for t <= 4 (transient growth; 1 for a contraction), Ny = 129.'
       '\nskw Re*dy, skw G: the same for skew-symmetric advection -1/2[v D u + D(v u)] with v = (1-y^2)(1/2+y), t <= 20, Ny = 129'
