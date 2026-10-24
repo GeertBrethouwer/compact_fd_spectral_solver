@@ -24,7 +24,13 @@ $(B)/test_wall_quad: tests/test_wall.f90 tests/stub_param.f90 $(SRC)/compact.f90
 run: all
 	@for t in $(TESTS) test_wall_quad; do echo "=== $$t"; ./$(B)/$$t; done
 
+# D1, D1m vs summation-by-parts operators (needs python3 with numpy and scipy)
+PYTHON ?= python3
+sbp: $(B)/dump_ops
+	mkdir -p $(B)/ops && cd $(B)/ops && ../dump_ops
+	$(PYTHON) tests/compare_sbp.py $(B)/ops
+
 clean:
 	rm -rf $(B)
 
-.PHONY: all run clean
+.PHONY: all run sbp clean

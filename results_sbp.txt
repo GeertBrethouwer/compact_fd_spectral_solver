@@ -1,0 +1,48 @@
+CSBP boundary block P (unit spacing, rows 1..5):
+ [[0.30265 0.1922  0.      0.      0.      0.     ]
+ [0.1922  0.64437 0.17634 0.      0.      0.     ]
+ [0.      0.17634 0.64165 0.17169 0.      0.     ]
+ [0.      0.      0.17169 0.66423 0.16667 0.     ]
+ [0.      0.      0.      0.16667 0.66667 0.16667]]
+Q:
+ [[-0.5      0.50516 -0.00516  0.       0.       0.     ]
+ [-0.50516  0.       0.50257  0.00259  0.       0.     ]
+ [ 0.00516 -0.50257  0.       0.49741  0.       0.     ]
+ [ 0.      -0.00259 -0.49741  0.       0.5      0.     ]
+ [ 0.       0.       0.      -0.5      0.       0.5    ]]
+min eig P block: 0.19996513772598204
+
+=== grid uniform
+op                      max error Ny=33..513                   order | |y|<.5 err @257 order |  skew own best diag  maxRe*dy  rho*dy         G | skw Re*dy     skw G
+D1      1.20e-03  1.48e-04  1.83e-05  2.28e-06  2.84e-07  3.00 |       1.33e-09  4.00 |   1.1e+00   1.8e+00  -1.5e-06   1.731       5.6 |   1.0e-16      2.05
+D1m     1.20e-03  1.48e-04  1.83e-05  2.28e-06  2.84e-07  3.00 |       1.33e-09  4.00 |   1.1e+00   1.8e+00  -1.5e-06   1.731       5.6 |   5.8e-17      2.05
+CSBP    5.75e-02  2.89e-02  1.45e-02  7.28e-03  3.64e-03  1.00 |       1.33e-09  4.00 |   3.7e-14   4.4e-01  -5.7e-06   1.731       2.5 |   8.5e-18      1.76
+SBP24   1.68e-02  4.38e-03  1.11e-03  2.81e-04  7.05e-05  1.99 |       7.99e-09  4.00 |   1.6e-16   2.5e-15  -3.1e-06   1.372       1.1 |   1.4e-16      1.71
+
+=== grid tanh2
+op                      max error Ny=33..513                   order | |y|<.5 err @257 order |  skew own best diag  maxRe*dy  rho*dy         G | skw Re*dy     skw G
+D1      2.54e-04  2.78e-05  3.25e-06  3.93e-07  4.83e-08  3.02 |       3.81e-09  4.00 |   1.1e+00   1.7e+00   3.2e-03   1.476       5.8 |   1.0e-02  1.85e+10
+D1m     2.35e-03  2.69e-04  3.21e-05  3.92e-06  4.84e-07  3.02 |       1.26e-08  4.00 |   1.1e+00   1.8e+00   4.4e-02   1.476     6e+08 |  -6.7e-19      3.06
+CSBP    2.66e-02  1.48e-02  7.72e-03  3.94e-03  1.99e-03  0.99 |       1.26e-08  4.00 |   1.3e-02   4.4e-01   2.8e-02   1.493   3.8e+05 |   1.1e-17      2.56
+SBP24   2.67e-02  6.18e-03  1.48e-03  3.63e-04  8.98e-05  2.02 |       7.56e-08  4.00 |   2.1e-16   1.9e-15   3.0e-16   1.168       1.5 |   1.7e-16      2.55
+
+=== grid tanh3
+op                      max error Ny=33..513                   order | |y|<.5 err @257 order |  skew own best diag  maxRe*dy  rho*dy         G | skw Re*dy     skw G
+D1      4.92e-05  4.89e-06  5.46e-07  6.44e-08  7.83e-09  3.04 |       9.61e-09  4.00 |   1.0e+00   1.7e+00   1.8e-03   1.373        24 |   1.1e-02  1.06e+20
+D1m     4.56e-03  4.94e-04  5.73e-05  6.90e-06  8.46e-07  3.03 |       4.11e-08  4.00 |   1.1e+00   1.8e+00   7.2e-02   1.373   1.6e+26 |   1.7e-17      4.61
+CSBP    1.17e-02  7.45e-03  4.06e-03  2.11e-03  1.07e-03  0.97 |       4.11e-08  4.00 |   2.4e-02   4.4e-01   4.2e-02   1.396   2.3e+15 |   4.4e-18      3.82
+SBP24   2.98e-02  6.18e-03  1.41e-03  3.38e-04  8.26e-05  2.03 |       2.47e-07  4.00 |   2.0e-16   1.7e-15   8.6e-17   1.081       2.1 |   3.0e-17      3.85
+
+=== grid tanh4
+op                      max error Ny=33..513                   order | |y|<.5 err @257 order |  skew own best diag  maxRe*dy  rho*dy         G | skw Re*dy     skw G
+D1      9.54e-05  6.04e-06  3.77e-07  2.35e-08  1.47e-09  4.00 |       2.35e-08  4.00 |   9.9e-01   1.6e+00  -2.4e-03   1.297   1.2e+02 |   8.0e-03  2.13e+29
+D1m     5.41e-03  5.34e-04  5.92e-05  6.97e-06  8.45e-07  3.04 |       1.12e-07  4.01 |   1.1e+00   1.8e+00   9.4e-02   1.297   1.7e+69 |   9.8e-19      7.32
+CSBP    4.22e-03  3.35e-03  1.92e-03  1.02e-03  5.22e-04  0.96 |       1.12e-07  4.01 |   3.4e-02   4.4e-01   5.3e-02   1.322   8.1e+38 |  -1.3e-17      6.04
+SBP24   2.46e-02  4.60e-03  1.00e-03  2.35e-04  5.69e-05  2.05 |       6.68e-07  3.99 |   1.2e-16   2.5e-15   1.4e-16   1.015         3 |   1.6e-17      6.15
+
+skew own: ||H D + D^T H - E||/||H D|| in the operator's own norm (D1, D1m: quadrature wq; CSBP: h Y^1/2 P Y^1/2; SBP24: h H diag(y_xi)), Ny = 129.
+best diag: same, minimised over all diagonal norms (* = some weight <= 0).
+maxRe*dy, rho*dy: max real part and spectral radius of the advection operator with inflow BC, times dy_min (Ny = 129).
+G: max_t ||exp(t L)|| for t <= 4 (transient growth; 1 for a contraction), Ny = 129.
+skw Re*dy, skw G: the same for skew-symmetric advection -1/2[v D u + D(v u)] with v = (1-y^2)(1/2+y), t <= 20, Ny = 129
+(energy-conserving in the continuous case: max Re = 0 and G = 1 in the right norm).

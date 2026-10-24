@@ -58,3 +58,61 @@ On the uniform grid the coefficients are the textbook ones: interior LHS 1/4 and
   boundary rows on a stretched grid could raise the effective value used in the CFL limit.
 * `spectral_radius_d2` uses power iteration with a 1.05 safety factor; it does not converge if the largest
   eigenvalue of the non-normal D2 is a complex pair.
+
+## Compact D1 vs. summation-by-parts operators (`make sbp`)
+
+`tests/compare_sbp.py` (needs numpy and scipy) compares four first-derivative operators on a uniform grid and
+on hyperbolic-tangent grids with α_s = 2, 3, 4 (hichan's `grid_type = 'tanh'`), Ny = 33…513. Full output in
+[`results_sbp.txt`](results_sbp.txt).
+
+| Operator | What it is |
+|---|---|
+| `D1` | hichan's compact 4th-order scheme, coefficients computed on the stretched grid |
+| `D1m` | hichan's compact scheme on the uniform ξ grid, `D1m = diag(1/y_ξ) D_ξ` |
+| `CSBP` | compact Padé interior (P f′ = Q f, P = tridiag(1/6, 2/3, 1/6), Q = ±1/2) with a summation-by-parts closure: P symmetric positive definite, Q + Qᵀ = diag(−1, 0, …, 0, 1); mapped like `D1m` |
+| `SBP24` | explicit diagonal-norm SBP operator (4th-order interior, 2nd-order boundary; Strand 1994), mapped like `D1m` |
+
+`CSBP` is the collocated compact scheme with D = −Gᵀ up to boundary terms that was asked for. With the norm
+equal to the compact left-hand side P, closures of 4 to 8 rows with P and Q up to pentadiagonal and
+nonadiagonal are only consistent with **first-order** boundary rows (2nd- and 3rd-order rows give an
+inconsistent linear system). The closure used minimises the degree-2…4 boundary error with P positive definite
+(smallest eigenvalue 0.2). It is exactly SBP on the uniform grid; after the mapping it is SBP only up to the
+commutator of P and diag(y_ξ), because P is not diagonal.
+
+Results at Ny = 129 (orders from Ny = 257 → 513):
+
+| | `D1` | `D1m` | `CSBP` | `SBP24` |
+|---|---|---|---|---|
+| max error order (wall) | 3 (4 for α_s = 4) | 3 | **1** | 2 |
+| max error, tanh α_s = 3, Ny = 129 | 5.5e-7 | 5.7e-5 | 4.1e-3 | 1.4e-3 |
+| interior (\|y\| < 0.5) order | 4 | 4 | 4 | 4 (6× larger constant) |
+| SBP defect, uniform | 1.1 | 1.1 | 4e-14 | 2e-16 |
+| SBP defect, tanh α_s = 2 / 3 / 4 | 1.0–1.1 | 1.1 | 0.013 / 0.024 / 0.034 | 2e-16 |
+| best diagonal norm defect | 1.6–1.8 | 1.8 | 0.44 | 2e-15 |
+| inflow advection, max Re λ·Δy_min, tanh α_s = 2 / 3 / 4 | 3e-3 / 2e-3 / −2e-3 | 0.044 / 0.072 / 0.094 | 0.028 / 0.042 / 0.053 | ≤ 3e-16 |
+| inflow advection, transient growth max‖e^{tL}‖, α_s = 3 | 24 | 1.6e26 | 2.3e15 | 2.1 |
+| skew-symmetric advection, max Re λ·Δy_min, α_s = 2 / 3 / 4 | **0.010 / 0.011 / 0.008** | ≈ 0 | ≈ 0 | ≈ 0 |
+| skew-symmetric advection, growth to t = 20, α_s = 3 | **1e20** | 4.6 | 3.8 | 3.9 |
+| spectral radius ·Δy_min | 1.30–1.73 | 1.30–1.73 | 1.32–1.73 | 1.02–1.37 |
+
+SBP defect: ‖H D + Dᵀ H − E‖₂ / ‖H D‖₂ in the operator's own norm (`D1`, `D1m`: quadrature `wq`;
+`CSBP`: h Y^½ P Y^½; `SBP24`: h H diag(y_ξ)). Inflow advection: u_t + u_y = 0 with u = 0 imposed at the inflow
+wall (both directions). Skew-symmetric advection: u_t = −½[v D u + D(v u)] with v = (1 − y²)(½ + y), which is
+zero at the walls as in the channel and conserves energy exactly in the continuous case. Growth values of a few
+for the neutral cases are the Euclidean norm seen through a non-uniform energy norm, not instability.
+
+### Conclusions
+
+1. **hichan's choice is confirmed.** In skew-symmetric form (the situation in the channel, v = 0 at the walls)
+   the direct compact `D1` is unstable on every stretched grid (growth rate ≈ 0.01/Δy_min), while `D1m` is
+   neutral to round-off. This is why hichan's skew-symmetric scalar advection uses `D1m`.
+2. **An exactly SBP compact 4th-order scheme costs a full order at the wall.** With the norm equal to the
+   compact LHS only first-order boundary rows are possible, so `CSBP` is 800–7000× less accurate at the wall than
+   `D1`. On stretched grids it is not exactly SBP either (non-diagonal norm), and with strongly imposed inflow
+   conditions it is as unstable as `D1m`. It gains nothing over `D1m` in skew-symmetric form.
+3. **Only the diagonal-norm operator is provably energy-stable on a stretched grid.** `SBP24` is SBP to round-off
+   on every grid, stable for both tests, and has a ≈ 20 % smaller spectral radius (larger explicit time step),
+   but is 2nd order at the wall and has a 6× larger interior error constant than the compact schemes.
+4. The inflow/outflow test is harsher than the channel (no wall-normal flux at a no-slip wall); the instability
+   of `D1m`/`CSBP` there comes from strongly imposed boundary values with a non-diagonal norm and would need
+   SAT (penalty) boundary conditions in an inflow/outflow problem.
