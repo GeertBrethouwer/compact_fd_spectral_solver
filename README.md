@@ -7,11 +7,23 @@ a non-uniform grid. The tests compile `compact.f90` on its own (no MPI, no GPU) 
 
 Tested against hichan commit `fa4f036`.
 
+## The hichan code in `hichan/`
+
+`hichan/` is a full copy of hichan at commit `fa4f036`, with one bug fixed:
+
+* **Work-array overrun (`src/fields.f90`, `src/main.f90`).** With `nl_form = 'advective'` and scalars in
+  `scal_form = 'divergence'` or `'skew'`, `add_flux_div` (`src/rk.f90`) writes to `gp(:,:,:,2)`, but
+  `gp` had only one slot unless `nl_form = 'rotational'`. The write ran past the end of the array.
+  With bounds checking (`make DEBUG=1`) the original code stops with *Index '2' of dimension 4 of array
+  'gp' outside of expected range (1:1)*. `gp` now gets 2 slots in that case (3 for the rotational form, as
+  before), and the memory estimate printed at start-up counts it. That is one more physical array of
+  mx × nzA × nyA, only in that combination. Checked: the fixed code runs both combinations with bounds
+  checking, and the default rotational form gives a bit-identical `log.dat` before and after the fix.
+
 ## Running
 
 ```bash
-git clone https://github.com/GeertBrethouwer/hichan.git ../hichan
-make run              # or: make run HICHAN=/path/to/hichan
+make run              # uses hichan/; or: make run HICHAN=/path/to/another/hichan
 ```
 
 | Test | What it measures |

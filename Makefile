@@ -1,6 +1,6 @@
 # Accuracy tests of hichan's compact finite differences (src/compact.f90).
-# HICHAN points to a checkout of https://github.com/GeertBrethouwer/hichan
-HICHAN ?= ../hichan
+# HICHAN: the copy of https://github.com/GeertBrethouwer/hichan in hichan/ (or another checkout)
+HICHAN ?= hichan
 FC      = gfortran
 FFLAGS ?= -O2
 SRC     = $(HICHAN)/src
