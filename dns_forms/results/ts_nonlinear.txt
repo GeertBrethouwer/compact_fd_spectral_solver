@@ -1,0 +1,14 @@
+Finite-amplitude TS wave (Re = 5000, alpha = 1.12, amplitude 0.05, nx = 16, 0 <= t <= 50)
+max over t of the relative deviation from the reference (Ny = 385, tanh alpha_s = 2, rotational, D1)
+columns per grid: E_TS (energy of the TS mode), Ekin (fluctuation energy), tau_w (wall shear)
+reference uncertainty: Ny=257 a2:   1.3e-04   1.3e-04   3.1e-04 | Ny=257 a4:   1.8e-05   1.8e-05   3.7e-05
+form        d/dy |                      a4 Ny=33 |                      a4 Ny=65 |                      a5 Ny=33 |                      a5 Ny=65
+rotational  d1   |   5.7e-01   2.6e-01   2.3e-01 |   2.2e-03   3.1e-03   8.3e-04 |             blow-up at t=14.1 |   9.5e-03   1.1e-02   1.3e-03
+rotational  d1m  |              blow-up at t=7.7 |   9.1e+01   4.2e+02   2.2e+00 |              blow-up at t=4.1 |             blow-up at t=17.5
+advective   d1   |             blow-up at t=10.6 |   1.3e-02   1.5e-02   2.1e-03 |              blow-up at t=7.5 |   5.6e-02   6.8e-02   6.5e-03
+advective   d1m  |             blow-up at t=16.2 |   4.5e-03   5.0e-03   8.9e-04 |              blow-up at t=8.4 |   2.3e-02   3.3e-02   3.5e-03
+divergence  d1   |             blow-up at t=18.9 |   4.5e-03   4.8e-03   2.6e-03 |             blow-up at t=12.9 |   1.8e-02   1.1e-02   1.0e-02
+divergence  d1m  |   5.1e-01   1.7e+00   1.6e-01 |              blow-up at t=2.8 |             blow-up at t=34.1 |              blow-up at t=2.7
+skew        d1   |   2.8e-01   1.7e-01   8.6e-02 |   4.2e-03   3.7e-03   8.2e-04 |             blow-up at t=22.2 |   1.0e-02   8.8e-03   2.1e-03
+skew        d1m  |   6.0e-01   2.7e-01   1.1e-01 |              blow-up at t=6.4 |   7.5e-01   3.3e+00   2.9e-01 |              blow-up at t=5.3
+reference: E_TS(0) = 8.894e-03, E_TS(50) = 1.433e-02, Ekin(50) = 7.446e-03

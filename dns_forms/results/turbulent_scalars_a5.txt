@@ -1,0 +1,11 @@
+Scalars in turbulent channel, tanh alpha_s = 5, 32x65x32, Re_tau ~ 200, momentum rotational/D1, t = 0..20
+s1: Pr = 0.71, s = +1/-1 at the walls, linear initially: wall gradient at t = 20 (bottom, top), and the max over t of its
+    relative deviation from skew/D1m (all variants start from the same field; s1 is still developing)
+s2: inviscid (Pr = 1e10), s = 0 at the walls, noise initially: <s2^2>(t)/<s2^2>(0), max over t and value at t = 20
+scal_form  d/dy |  dS1/dy bottom       top   max dev | s2 var max   at t=20
+advective  d1   |       -5.17673  -5.41545   1.1e-02 |   1.82e+30  1.82e+30  blow-up/stopped at t=14.1
+advective  d1m  |       -5.13026  -5.36773   2.0e-02 |        162       162
+divergence d1   |       -5.07439  -5.28783   3.5e-02 |   2.34e+28  2.34e+28
+divergence d1m  |       -5.23804  -5.43927   1.0e-02 |        644       644
+skew       d1   |       -5.12530  -5.34768   2.4e-02 |   7.78e+30  7.78e+30  blow-up/stopped at t=17.4
+skew       d1m  |       -5.23327  -5.47691   0.0e+00 |          1         1

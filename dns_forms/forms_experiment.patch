@@ -1,0 +1,190 @@
+diff -ru a/src/fields.f90 b/src/fields.f90
+--- a/src/fields.f90	2026-10-25 11:32:19
++++ b/src/fields.f90	2026-10-25 11:32:19
+@@ -25,6 +25,7 @@
+     ! work arrays gp: u x omega needs 3; the divergence and skew scalar forms need 2 (add_flux_div)
+     ng = 1
+     if(nscal > 0 .and. trim(scal_form) /= 'advective') ng = 2
++    if(trim(nl_form) == 'divergence' .or. trim(nl_form) == 'skew') ng = 2   ! EXPERIMENT: add_flux_div
+     if(trim(nl_form) == 'rotational') ng = 3
+     allocate(up(mx,nzA,nyA),vp(mx,nzA,nyA),wp(mx,nzA,nyA),ap(mx,nzA,nyA),gp(mx,nzA,nyA,ng))
+     u = 0; v = 0; w = 0; nu = 0; nv = 0; nw = 0; nuo = 0; nvo = 0; nwo = 0; tmp1 = 0; tmp2 = 0
+diff -ru a/src/main.f90 b/src/main.f90
+--- a/src/main.f90	2026-10-25 11:32:19
++++ b/src/main.f90	2026-10-25 11:32:19
+@@ -165,6 +165,7 @@
+     ph = 8_i8*mx*nzA*nyA
+     ng = 1
+     if(nscal > 0 .and. trim(scal_form) /= 'advective') ng = 2
++    if(trim(nl_form) == 'divergence' .or. trim(nl_form) == 'skew') ng = 2
+     if(trim(nl_form) == 'rotational') ng = 3
+     b(1) = sp*(11+3*max(nscal,1))
+     b(2) = ph*(4+ng)
+diff -ru a/src/param.f90 b/src/param.f90
+--- a/src/param.f90	2026-10-25 11:32:19
++++ b/src/param.f90	2026-10-25 11:32:19
+@@ -33,6 +33,7 @@
+   real(rp) :: visc_theta = 0._rp          ! theta of the viscous term (0: explicit, Appendix B.1; >0: implicit, B.2)
+   integer  :: impl_maxit = 10              ! max. iterations of the implicit pressure/velocity coupling (B.2)
+   real(rp) :: impl_tol = 1.e-12_rp         ! convergence: max|v^{m+1}-v^m| < impl_tol*max|v|
++  character(len=4)  :: dy_op = 'd1'        ! EXPERIMENT: d/dy in the nonlinear terms: 'd1' compact on y, 'd1m' mapped
+   character(len=16) :: nl_form = 'rotational' ! 'rotational' (energy conserving, 9 FFTs) or 'advective' (as in the paper, 15 FFTs)
+   !
+   ! &time
+@@ -77,6 +78,7 @@
+   real(rp) :: ssrc_const(nscal_max) = 0._rp      ! volumetric source  Q_c
+   real(rp) :: ssrc_u(nscal_max) = 0._rp          ! source  Q_u*u/ubulk (e.g. uniform-heat-flux channels)
+   character(len=16) :: sinit(nscal_max) = 'linear' ! 'linear', 'zero', 'noise'
++  character(len=4)  :: scal_dy = 'd1'      ! EXPERIMENT: d/dy of the scalar advection: 'd1' or 'd1m'
+   character(len=12) :: scal_form = 'advective' ! scalar advection: 'advective' u.grad(s), 'divergence'
+                                                ! div(u s), or 'skew' (average of both: conserves the
+                                                ! scalar variance, more robust, 8 instead of 4 FFTs)
+@@ -120,12 +122,12 @@
+     integer, intent(in) :: myid
+     integer :: iunit,ios
+     namelist /grid/ nx,ny,nz,lx,lz,grid_type,grid_alpha,grid_file,fd_order,dealias
+-    namelist /physics/ re,forcing,ubulk,dpdx,ns_method,vv_neumann,nl_form,visc_theta,impl_maxit,impl_tol
++    namelist /physics/ re,forcing,ubulk,dpdx,ns_method,vv_neumann,nl_form,dy_op,visc_theta,impl_maxit,impl_tol
+     namelist /time/ nstep,tmax,wall_time_max,dt,fixed_dt,dt_max,dt_growth,cfl,cfl_visc
+     namelist /init/ init_type,init_amp,init_noise,ls_nmin,ls_nmax,init_seed,mode_file,mode_kx,mode_kz,restart_file,reset_time
+     namelist /output/ data_dir,iout_log,iout_stats,iout_save_stats,iout_restart,iout_field,tstats_start, &
+                       mode_log_kx,mode_log_kz,timing,timing_sync
+-    namelist /scalars/ nscal,pr,scal_theta,sbc_bot,sbc_top,sval_bot,sval_top,ssrc_const,ssrc_u,sinit,scal_form
++    namelist /scalars/ nscal,pr,scal_theta,sbc_bot,sbc_top,sval_bot,sval_top,ssrc_const,ssrc_u,sinit,scal_form,scal_dy
+     namelist /buoyancy/ gravity,ri
+     namelist /parallel/ pdims,transpose_lib,transpose_prec,cudecomp_t_backend,cudecomp_enable_nccl,cudecomp_enable_nvshmem
+     !
+@@ -160,9 +162,10 @@
+     if(any(scal_theta(:) < 0._rp .or. scal_theta(:) > 1._rp)) call abort_run('0 <= scal_theta <= 1 required')
+     if(nscal < 0 .or. nscal > nscal_max) call abort_run('0 <= nscal <= 16 required')
+     if(all(forcing /= ['cfr','cpg'])) call abort_run('forcing must be cfr or cpg')
+-    if(all(nl_form /= ['advective ','rotational'])) call abort_run('nl_form must be advective or rotational')
++    if(all(nl_form /= ['advective ','rotational','divergence','skew      '])) call abort_run('bad nl_form')
++    if(all(dy_op /= ['d1 ','d1m'])) call abort_run('bad dy_op')
+     if(all(transpose_prec /= ['double','single'])) call abort_run("transpose_prec must be 'double' or 'single'")
+-    if(all(scal_form /= ['advective ','divergence','skew      '])) &
++    if(all(scal_form /= ['advective ','divergence','skew      ','skewd1    '])) &
+       call abort_run("scal_form must be 'advective', 'divergence' or 'skew'")
+     nxh = nx/2
+     if(dealias) then
+@@ -205,7 +208,7 @@
+       else
+         write(*,f1) 'Navier-Stokes solver','primitive variables + influence matrix'
+       end if
+-      write(*,f1) 'nonlinear term',trim(nl_form)
++      write(*,f1) 'nonlinear term',trim(nl_form)//' '//trim(dy_op)
+       if(ns_method == 'vv') then
+         write(*,f1) 'wall derivative in dv/dy = 0',trim(vv_neumann)
+       else if(visc_theta > 0._rp) then
+diff -ru a/src/rk.f90 b/src/rk.f90
+--- a/src/rk.f90	2026-10-25 11:32:19
++++ b/src/rk.f90	2026-10-25 11:32:19
+@@ -151,6 +151,17 @@
+     end do
+   end subroutine add_flux_div
+   !
++  subroutine dydx(f,df)
++    implicit none
++    complex(rp), intent(in)  :: f(nkx,nkz,ny)
++    complex(rp), intent(out) :: df(nkx,nkz,ny)
++    if(dy_op == 'd1m') then
++      call deriv1m(f,df)
++    else
++      call deriv1(f,df)
++    end if
++  end subroutine dydx
++  !
+   subroutine nonlinear(is_first,dtnew)
+     implicit none
+     logical , intent(in)  :: is_first
+@@ -175,12 +186,14 @@
+     ! uniform computational grid and mapped (deriv1m), which is skew-adjoint in the interior; the
+     ! compact D1 computed directly on a stretched grid is not
+     !
+-    skew = .false.
++    skew = (scal_dy == 'd1m')
+     select case(scal_form)
+     case('divergence')
+       fa = 0._rp
+     case('skew')
+       fa = 0.5_rp; skew = .true.
++    case('skewd1')
++      fa = 0.5_rp
+     case default
+       fa = 1._rp
+     end select
+@@ -210,16 +223,27 @@
+     !
+     ! momentum
+     !
+-    if(trim(nl_form) == 'advective') then
+-      call advect(u,-1._rp,.false.)
+-      call fwd_fft(ap,nu)
+-      call advect(v,-1._rp,.false.)
+-      call fwd_fft(ap,nv)
+-      call advect(w,-1._rp,.false.)
+-      call fwd_fft(ap,nw)
++    if(trim(nl_form) /= 'rotational') then
++      select case(nl_form)
++      case('divergence'); fa = 0._rp
++      case('skew');       fa = 0.5_rp
++      case default;       fa = 1._rp
++      end select
++      if(fa > 0._rp) then
++        call advect(u,-fa,dy_op == 'd1m'); call fwd_fft(ap,nu)
++        call advect(v,-fa,dy_op == 'd1m'); call fwd_fft(ap,nv)
++        call advect(w,-fa,dy_op == 'd1m'); call fwd_fft(ap,nw)
++      else
++        nu = 0; nv = 0; nw = 0
++      end if
++      if(fa < 1._rp) then
++        call add_flux_div(u,nu,fa-1._rp,dy_op == 'd1m')
++        call add_flux_div(v,nv,fa-1._rp,dy_op == 'd1m')
++        call add_flux_div(w,nw,fa-1._rp,dy_op == 'd1m')
++      end if
+     else
+       ! omega_x = dw/dy - dv/dz
+-      call deriv1(w,tmp1)
++      call dydx(w,tmp1)
+       call spec_axpy(v,tmp1,0._rp,-1._rp,1._rp)
+       call bwd_fft(tmp1,gp(:,:,:,1))
+       ! omega_y = du/dz - dw/dx
+@@ -227,7 +251,7 @@
+       call spec_axpy(w,tmp1,-1._rp,0._rp,1._rp)
+       call bwd_fft(tmp1,gp(:,:,:,2))
+       ! omega_z = dv/dx - du/dy
+-      call deriv1(u,tmp1)
++      call dydx(u,tmp1)
+       call spec_axpy(v,tmp1,1._rp,0._rp,-1._rp)
+       call bwd_fft(tmp1,gp(:,:,:,3))
+       ! N = u x omega
+diff -ru a/src/stats.f90 b/src/stats.f90
+--- a/src/stats.f90	2026-10-25 11:32:19
++++ b/src/stats.f90	2026-10-25 11:32:19
+@@ -181,7 +181,7 @@
+     complex(rp), intent(in) :: u(nkx,nkz,ny),v(nkx,nkz,ny),w(nkx,nkz,ny)
+     complex(rp), intent(in), contiguous :: s(:,:,:,:)
+     real(rp) :: um(ny),uu(ny),vv(ny),ww(ny),ub,gb,gt,tauw,retau,ekin,em,sgb(nscal_max),sgt(nscal_max)
+-    real(rp) :: buf(2+2*nscal_max)
++    real(rp) :: buf(2+2*nscal_max),s2(nscal_max)
+     integer :: n,ierr
+     call profile_mean(u,1._rp,um)
+     call correlation(u,u,1._rp,uu)
+@@ -195,6 +195,8 @@
+     do n=1,nscal
+       call wall_gradient(s(:,:,:,n),sgb(n),sgt(n))
+       buf(2+2*n-1) = sgb(n); buf(2+2*n) = sgt(n)
++      call profile_mean(s(:,:,:,n),1._rp,um); call correlation(s(:,:,:,n),s(:,:,:,n),1._rp,uu)
++      s2(n) = 0.5_rp*sum(wq(:)*(um(:)**2+uu(:)))     ! EXPERIMENT: volume mean of s^2
+     end do
+     call MPI_ALLREDUCE(MPI_IN_PLACE,buf,2+2*nscal,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr)
+     gb = buf(1); gt = buf(2)
+@@ -205,7 +207,7 @@
+     if(myid == 0) then
+       write(iunit,'(i9,6es14.6,es11.3,2es14.6)',advance='no') istep,time,dtcur,ub,dpdx_app,tauw,retau,divm,ekin,em
+       do n=1,nscal
+-        write(iunit,'(2es14.6)',advance='no') buf(2+2*n-1),buf(2+2*n)
++        write(iunit,'(3es14.6)',advance='no') buf(2+2*n-1),buf(2+2*n),s2(n)
+       end do
+       write(iunit,*)
+       flush(iunit)

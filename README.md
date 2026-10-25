@@ -196,3 +196,12 @@ Laplacian) against hichan's compact D2. MOLE is GPL-3.0, so its coefficient tabl
 * **Spectrum:** all Dirichlet Laplacians are stable (Re λ < 0), but for k = 6 and 8 the mimetic Laplacian is not
   self-adjoint: eigenvalues with imaginary parts up to 30 % of the spectral radius. hichan's compact D2 has a real
   spectrum.
+
+## Nonlinear-term forms in DNS on strongly stretched grids
+
+[`dns_forms/`](dns_forms/README.md) tests, inside hichan, whether D1 or D1m in the nonlinear terms makes a
+difference on tanh grids with α_s = 4 and 5. It covers the rotational, advective, divergence and
+skew-symmetric momentum forms and the advective, divergence and skew-symmetric scalar forms, in linear and
+finite-amplitude TS waves and a coarse turbulent channel. In short, hichan's D1 is the right choice for the
+momentum equations. A different operator in the nonlinear terms alone conflicts with the D1 of the pressure
+step and blows up. For scalars, only the existing skew-symmetric form with D1m conserves the variance.

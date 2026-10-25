@@ -1,0 +1,21 @@
+Turbulent channel, 32x65x32, Re_b = 2800, restarted from developed turbulence (rotational/D1)
+alpha_s = 4: t = 0..40, alpha_s = 5: t = 0..30 (from the alpha_s = 4 field interpolated in y); averages over t >= 10
+max div: over t > 0 (the alpha_s = 5 start field, interpolated in y, has div = 2e-2 at t = 0 only)
+U_c+, u_rms+, -uv+: from stats.dat (u_tau from the averaged Re_tau), centreline and peak values
+form        d/dy |  a             status  <Re_tau>    <Ekin>   max div |   U_c+  urms+  vrms+  wrms+   -uv+
+rotational  d1   |  4     stable to t=40     204.2  8.44e-03   4.1e-15 |  15.96   2.62   0.89   1.18  0.768
+rotational  d1m  |  4   blow-up at t=9.8       nan       nan   1.1e-14
+advective   d1   |  4     stable to t=40     203.2  8.45e-03   5.5e-16 |  16.04   2.59   0.89   1.18  0.769
+advective   d1m  |  4     stable to t=40     203.4  8.49e-03   9.5e-16 |  15.99   2.57   0.88   1.18  0.756
+divergence  d1   |  4     stable to t=40     203.7  8.50e-03   8.0e-16 |  15.97   2.60   0.88   1.18  0.770
+divergence  d1m  |  4   blow-up at t=1.2       nan       nan   1.2e-15
+skew        d1   |  4     stable to t=40     203.1  8.30e-03   5.7e-16 |  16.03   2.57   0.87   1.19  0.749
+skew        d1m  |  4   blow-up at t=4.1       nan       nan   1.6e-14
+rotational  d1   |  5     stable to t=30     200.6  8.18e-03   1.7e-15 |  16.28   2.61   0.87   1.17  0.761
+rotational  d1m  |  5   blow-up at t=3.7       nan       nan   6.3e-14
+advective   d1   |  5     stable to t=30     204.3  9.09e-03   1.2e-15 |  15.86   2.63   0.90   1.19  0.804
+advective   d1m  |  5  blow-up at t=10.3       nan       nan   4.3e-14
+divergence  d1   |  5     stable to t=30     201.1  8.67e-03   1.6e-15 |  16.40   2.59   0.85   1.16  0.756
+divergence  d1m  |  5   blow-up at t=1.2       nan       nan   2.6e-14
+skew        d1   |  5     stable to t=30     203.2  8.32e-03   1.0e-15 |  16.03   2.57   0.86   1.18  0.752
+skew        d1m  |  5   blow-up at t=2.2       nan       nan   5.9e-14
